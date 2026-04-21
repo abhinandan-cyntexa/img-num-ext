@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image + Number Grid</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="vendor/tableau.extensions.1.latest.js"></script>
+</head>
+<body>
+  <main class="extension-root" aria-live="polite">
+    <aside class="status-panel" id="statusPanel" data-status="loading" aria-live="polite">
+      <div class="status-heading">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusLabel">Initializing</span>
+      </div>
+      <div class="status-detail" id="statusDetail">Connecting to Tableau...</div>
+      <dl class="mapping-list">
+        <div>
+          <dt>Image URL</dt>
+          <dd id="imageMapping">Not mapped</dd>
+        </div>
+        <div>
+          <dt>Value</dt>
+          <dd id="valueMapping">Not mapped</dd>
+        </div>
+        <div>
+          <dt>Rows</dt>
+          <dd id="rowMapping">0 rendered</dd>
+        </div>
+      </dl>
+    </aside>
+
+    <section class="grid-shell" aria-label="Image and number card grid">
+      <div id="cardGrid" class="card-grid"></div>
+      <div id="emptyState" class="empty-state">Loading...</div>
+    </section>
+
+    <div id="error" class="error" role="status"></div>
+
+    <template id="imagePlaceholderTemplate">
+      <div class="image-placeholder" aria-hidden="true">
+        <svg viewBox="0 0 96 96" role="img" focusable="false">
+          <circle cx="34" cy="34" r="12"></circle>
+          <circle cx="62" cy="34" r="12"></circle>
+          <circle cx="48" cy="30" r="14"></circle>
+          <path d="M17 68c3-15 14-23 31-23s28 8 31 23c-8 7-18 11-31 11s-23-4-31-11z"></path>
+        </svg>
+      </div>
+    </template>
+  </main>
+  <script src="chart.js"></script>
+</body>
+</html>
