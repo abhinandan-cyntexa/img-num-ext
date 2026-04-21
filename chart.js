@@ -238,6 +238,7 @@ function findColumnIndex(columns, field) {
     field.fieldId,
     field.name,
     field.fieldName,
+    field.fieldCaption,
   ].map(normalizeToken).filter(Boolean);
 
   for (let columnPosition = 0; columnPosition < columns.length; columnPosition += 1) {
@@ -245,6 +246,7 @@ function findColumnIndex(columns, field) {
     const columnTokens = [
       column?.fieldId,
       column?.fieldName,
+      column?.fieldCaption,
       column?.name,
       column?.caption,
     ].map(normalizeToken).filter(Boolean);
@@ -258,7 +260,7 @@ function findColumnIndex(columns, field) {
 }
 
 function getFieldLabel(field) {
-  return field?.name ?? field?.fieldName ?? field?.id ?? field?.fieldId ?? null;
+  return field?.name ?? field?.fieldName ?? field?.fieldCaption ?? field?.id ?? field?.fieldId ?? null;
 }
 
 function normalizeToken(value) {
