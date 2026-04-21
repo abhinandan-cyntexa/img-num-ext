@@ -85,28 +85,28 @@
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
-| FOUND-03 | Phase 1 | Pending |
-| FOUND-04 | Phase 1 | Pending |
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 2 | Pending |
-| DATA-05 | Phase 2 | Pending |
-| CARD-01 | Phase 2 | Pending |
-| CARD-02 | Phase 2 | Pending |
-| CARD-03 | Phase 2 | Pending |
-| CARD-04 | Phase 2 | Pending |
-| CARD-05 | Phase 2 | Pending |
-| LAYOUT-01 | Phase 2 | Pending |
-| LAYOUT-02 | Phase 2 | Pending |
-| LAYOUT-03 | Phase 2 | Pending |
-| LAYOUT-04 | Phase 2 | Pending |
-| STATE-01 | Phase 2 | Pending |
-| STATE-02 | Phase 2 | Pending |
+| Requirement | Phase | Phase Name | Status |
+|-------------|-------|------------|--------|
+| FOUND-01 | Phase 1 | Foundation | Pending |
+| FOUND-02 | Phase 1 | Foundation | Pending |
+| FOUND-03 | Phase 1 | Foundation | Pending |
+| FOUND-04 | Phase 1 | Foundation | Pending |
+| DATA-01 | Phase 1 | Foundation | Pending |
+| DATA-02 | Phase 1 | Foundation | Pending |
+| DATA-03 | Phase 1 | Foundation | Pending |
+| DATA-04 | Phase 2 | Working Extension | Pending |
+| DATA-05 | Phase 2 | Working Extension | Pending |
+| CARD-01 | Phase 2 | Working Extension | Pending |
+| CARD-02 | Phase 2 | Working Extension | Pending |
+| CARD-03 | Phase 2 | Working Extension | Pending |
+| CARD-04 | Phase 2 | Working Extension | Pending |
+| CARD-05 | Phase 2 | Working Extension | Pending |
+| LAYOUT-01 | Phase 2 | Working Extension | Pending |
+| LAYOUT-02 | Phase 2 | Working Extension | Pending |
+| LAYOUT-03 | Phase 2 | Working Extension | Pending |
+| LAYOUT-04 | Phase 2 | Working Extension | Pending |
+| STATE-01 | Phase 2 | Working Extension | Pending |
+| STATE-02 | Phase 2 | Working Extension | Pending |
 
 **Coverage:**
 - v1 requirements: 20 total
@@ -115,4 +115,4 @@
 
 ---
 *Requirements defined: 2026-04-21*
-*Last updated: 2026-04-21 after initial definition*
+*Last updated: 2026-04-21 after roadmap creation*
