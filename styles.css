@@ -45,115 +45,6 @@ body {
   padding: 14px;
 }
 
-.status-panel {
-  width: 100%;
-  padding: 12px 14px 13px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.status-heading {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 600;
-}
-
-.status-dot {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: #8a8f98;
-}
-
-.status-panel[data-status="loading"] .status-dot {
-  background: #4e79a7;
-}
-
-.status-panel[data-status="ready"] .status-dot {
-  background: #2f8f5b;
-}
-
-.status-panel[data-status="warning"] .status-dot {
-  background: #c7872f;
-}
-
-.status-panel[data-status="error"] .status-dot {
-  background: #b93a3a;
-}
-
-.status-detail {
-  margin-top: 4px;
-  color: var(--text-muted);
-}
-
-.status-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.status-controls label {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.status-controls select {
-  min-width: 82px;
-  height: 28px;
-  padding: 3px 28px 3px 8px;
-  border: 1px solid var(--border-strong);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-}
-
-.mapping-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  gap: 9px 12px;
-  margin: 11px 0 0;
-}
-
-.mapping-list div {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.mapping-list dt {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.mapping-list dd {
-  min-width: 0;
-  margin: 0;
-  color: var(--text);
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mapping-list dd.is-missing {
-  color: var(--danger);
-}
-
-.mapping-list dd.is-warning {
-  color: var(--warning);
-}
-
 .grid-shell {
   width: 100%;
   min-height: 0;
@@ -291,10 +182,6 @@ body {
   .extension-root {
     gap: 10px;
     padding: 10px;
-  }
-
-  .status-panel {
-    padding: 10px 11px;
   }
 
   .card-grid {

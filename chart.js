@@ -3,12 +3,9 @@
 const ENCODING_IMAGE = 'image';
 const ENCODING_VALUE = 'value';
 const PAGE_ROW_COUNT = 5000;
-const CARD_LIMIT_STORAGE_KEY = 'imgNumGrid.cardLimit';
-const CARD_LIMIT_OPTIONS = new Set(['all', '3', '5', '10', '25']);
 
 let activeWorksheet = null;
 let renderRequestId = 0;
-let cardLimit = getInitialCardLimit();
 
 window.addEventListener('error', event => {
   renderEmptyState(event.message || 'Unexpected script error.', 'error', 'Script error');
@@ -18,12 +15,6 @@ window.addEventListener('unhandledrejection', event => {
   renderEmptyState(messageFromError(event.reason), 'error', 'Async error');
 });
 
-setStatus({
-  state: 'loading',
-  label: 'Initializing',
-  detail: 'Connecting to Tableau...',
-});
-initializeCardLimitControl();
 bootstrap();
 
 function bootstrap() {
@@ -42,6 +33,14 @@ function bootstrap() {
       tableau.TableauEventType.SummaryDataChanged,
       () => render(activeWorksheet)
     );
+
+    if (tableau.TableauEventType.WorksheetFormattingChanged) {
+      activeWorksheet.addEventListener(
+        tableau.TableauEventType.WorksheetFormattingChanged,
+        () => render(activeWorksheet)
+      );
+    }
+
     render(activeWorksheet);
   }).catch(err => {
     renderEmptyState(messageFromError(err), 'error', 'Initialization failed');
@@ -54,11 +53,6 @@ async function render(worksheet) {
 
   clearError();
   renderEmptyGrid('Loading worksheet data...');
-  setStatus({
-    state: 'loading',
-    label: 'Loading worksheet',
-    detail: 'Reading mapped fields and summary data...',
-  });
 
   try {
     const [vizSpec, dataTable] = await Promise.all([
@@ -74,25 +68,11 @@ async function render(worksheet) {
 
     if (diagnostics.issues.length) {
       renderEmptyGrid('Map at least one valid Image URL and Value field pair to render the grid.');
-      setStatus({
-        state: 'warning',
-        label: 'Needs mapping',
-        detail: diagnostics.issues.join(' '),
-        diagnostics,
-        renderedCards: 0,
-      });
       return;
     }
 
     if (!dataTable.data.length) {
       renderEmptyGrid('The mapped fields are valid, but Tableau returned no summary rows.');
-      setStatus({
-        state: 'warning',
-        label: 'No data',
-        detail: 'The mapped fields are valid, but Tableau returned no summary rows.',
-        diagnostics,
-        renderedCards: 0,
-      });
       return;
     }
 
@@ -106,58 +86,15 @@ async function render(worksheet) {
   }
 }
 
-function initializeCardLimitControl() {
-  const control = document.getElementById('cardLimitSelect');
-  if (!control) {
-    return;
-  }
-
-  control.value = cardLimit;
-  control.addEventListener('change', () => {
-    cardLimit = normalizeCardLimit(control.value);
-    persistCardLimit(cardLimit);
-    if (activeWorksheet) {
-      render(activeWorksheet);
-    }
-  });
-}
-
-function getInitialCardLimit() {
-  const params = new URLSearchParams(window.location.search);
-  return normalizeCardLimit(params.get('cards') || readStoredCardLimit() || 'all');
-}
-
-function normalizeCardLimit(value) {
-  const normalized = String(value ?? '').trim().toLowerCase();
-  return CARD_LIMIT_OPTIONS.has(normalized) ? normalized : 'all';
-}
-
-function readStoredCardLimit() {
-  try {
-    return window.localStorage?.getItem(CARD_LIMIT_STORAGE_KEY);
-  } catch (_err) {
-    return null;
-  }
-}
-
-function persistCardLimit(value) {
-  try {
-    window.localStorage?.setItem(CARD_LIMIT_STORAGE_KEY, value);
-  } catch (_err) {
-    // Some embedded browser contexts disable localStorage; the current session still updates.
-  }
-}
-
 function applyCardLimit(cards) {
-  if (cardLimit === 'all') {
-    return cards;
-  }
-
-  return cards.slice(0, Number(cardLimit));
+  return cards;
 }
 
 async function fetchSummaryData(worksheet) {
-  const options = { ignoreSelection: true };
+  const options = {
+    ignoreSelection: true,
+    applyWorksheetFormatting: true,
+  };
   if (tableau.IncludeDataValuesOption?.AllValues) {
     options.includeDataValuesOption = tableau.IncludeDataValuesOption.AllValues;
   }
@@ -265,7 +202,7 @@ function parseCards(dataTable, diagnostics) {
     diagnostics.pairs.map(pair => {
       const imageCell = row[pair.image.index];
       const valueCell = row[pair.value.index];
-      const numericValue = toNumber(cellRawValue(valueCell) ?? cellDisplayValue(valueCell));
+      const valueText = cardValueText(valueCell);
 
       return {
         rowNumber: rowIndex + 1,
@@ -273,7 +210,7 @@ function parseCards(dataTable, diagnostics) {
         imageField: pair.image.label,
         valueField: pair.value.label,
         imageUrl: normalizeImageUrl(cellStringValue(imageCell)),
-        value: numericValue,
+        valueText,
       };
     })
   ));
@@ -461,13 +398,6 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
   const grid = document.getElementById('cardGrid');
   const emptyState = document.getElementById('emptyState');
   const fragment = document.createDocumentFragment();
-  const imageStats = {
-    blank: 0,
-    broken: 0,
-    loaded: 0,
-    pending: 0,
-    invalidValues: 0,
-  };
 
   grid.replaceChildren();
   emptyState.hidden = true;
@@ -495,16 +425,14 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
 
     const value = document.createElement('div');
     value.className = 'card-value';
-    if (cardData.value === null) {
+    if (!cardData.valueText) {
       value.classList.add('is-missing');
       value.textContent = '--';
-      imageStats.invalidValues += 1;
     } else {
-      value.textContent = formatNumber(cardData.value);
+      value.textContent = cardData.valueText;
     }
 
     if (cardData.imageUrl) {
-      imageStats.pending += 1;
       image.onload = () => {
         if (requestId !== renderRequestId) {
           return;
@@ -512,9 +440,6 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
 
         image.hidden = false;
         placeholder.hidden = true;
-        imageStats.pending -= 1;
-        imageStats.loaded += 1;
-        updateGridStatus(cards.length, totalCardCount, rowCount, diagnostics, imageStats);
       };
       image.onerror = () => {
         if (requestId !== renderRequestId) {
@@ -524,13 +449,8 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
         image.hidden = true;
         placeholder.hidden = false;
         image.removeAttribute('src');
-        imageStats.pending -= 1;
-        imageStats.broken += 1;
-        updateGridStatus(cards.length, totalCardCount, rowCount, diagnostics, imageStats);
       };
       image.src = cardData.imageUrl;
-    } else {
-      imageStats.blank += 1;
     }
 
     card.append(imageFrame, value);
@@ -538,49 +458,6 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
   });
 
   grid.append(fragment);
-  updateGridStatus(cards.length, totalCardCount, rowCount, diagnostics, imageStats);
-}
-
-function updateGridStatus(cardCount, totalCardCount, rowCount, diagnostics, imageStats) {
-  const hasFallbacks = imageStats.blank > 0 || imageStats.broken > 0;
-  const hasInvalidValues = imageStats.invalidValues > 0;
-  const hasMappingWarnings = diagnostics.warnings?.length > 0;
-  const isLoadingImages = imageStats.pending > 0;
-  const state = isLoadingImages ? 'loading' : (hasMappingWarnings || hasFallbacks || hasInvalidValues ? 'warning' : 'ready');
-  const label = isLoadingImages ? 'Loading images' : (hasMappingWarnings ? 'Mapping warning' : (hasFallbacks ? 'Image fallback' : (hasInvalidValues ? 'Value fallback' : 'Ready')));
-  const details = [
-    `Rendering ${formatCount(cardCount, 'card')} from ${formatCount(rowCount, 'row')} and ${formatCount(diagnostics.pairCount, 'field pair')}.`,
-  ];
-
-  if (cardLimit !== 'all' && totalCardCount > cardCount) {
-    details.push(`Display capped at ${cardLimit}.`);
-  }
-
-  if (hasMappingWarnings) {
-    details.push(diagnostics.warnings.join(' '));
-  }
-
-  if (imageStats.pending > 0) {
-    details.push(`${formatCount(imageStats.loaded, 'image')} loaded; ${formatCount(imageStats.pending, 'image')} still loading.`);
-  }
-
-  const fallbackCount = imageStats.blank + imageStats.broken;
-  if (fallbackCount > 0) {
-    details.push(`${formatCount(fallbackCount, 'image')} using fallback.`);
-  }
-
-  if (imageStats.invalidValues > 0) {
-    details.push(`${formatCount(imageStats.invalidValues, 'value')} could not be parsed.`);
-  }
-
-  setStatus({
-    state,
-    label,
-    detail: details.join(' '),
-    diagnostics,
-    renderedCards: cardCount,
-    totalCards: totalCardCount,
-  });
 }
 
 function createImagePlaceholder() {
@@ -591,12 +468,6 @@ function createImagePlaceholder() {
 function renderEmptyState(message, state = 'error', label = 'Error') {
   renderEmptyGrid(message);
   setError(message);
-  setStatus({
-    state,
-    label,
-    detail: message,
-    renderedCards: 0,
-  });
 }
 
 function renderEmptyGrid(message) {
@@ -610,8 +481,28 @@ function cellRawValue(cell) {
   return cell?.value ?? cell?.nativeValue ?? null;
 }
 
-function cellDisplayValue(cell) {
-  return cell?.formattedValue ?? cell?.value ?? cell?.nativeValue ?? '';
+function cardValueText(cell) {
+  const formattedValue = cleanDisplayValue(cell?.formattedValue);
+  if (formattedValue) {
+    return formattedValue;
+  }
+
+  const rawValue = cellRawValue(cell);
+  if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+    return formatNumber(rawValue);
+  }
+
+  return cleanDisplayValue(cell?.value ?? cell?.nativeValue);
+}
+
+function cleanDisplayValue(value) {
+  const text = String(value ?? '').trim();
+  const normalized = text.toLowerCase();
+  if (!text || normalized === 'null' || normalized === 'undefined' || normalized === 'nan') {
+    return '';
+  }
+
+  return text;
 }
 
 function cellStringValue(cell) {
@@ -628,24 +519,6 @@ function cellStringValue(cell) {
 
   const fallback = candidates.find(value => value !== null && value !== undefined);
   return fallback ?? '';
-}
-
-function toNumber(value) {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const normalized = value.replace(/,/g, '').trim();
-  if (!normalized || normalized.toLowerCase() === 'null') {
-    return null;
-  }
-
-  const number = Number(normalized);
-  return Number.isFinite(number) ? number : null;
 }
 
 function normalizeImageUrl(value) {
@@ -667,58 +540,6 @@ function formatNumber(value) {
 
 function formatCount(count, singular) {
   return `${count} ${singular}${count === 1 ? '' : 's'}`;
-}
-
-function setStatus({ state = 'loading', label, detail, diagnostics = {}, renderedCards = 0, totalCards = renderedCards }) {
-  const panel = document.getElementById('statusPanel');
-  const labelEl = document.getElementById('statusLabel');
-  const detailEl = document.getElementById('statusDetail');
-  const pairEl = document.getElementById('pairMapping');
-  const cardEl = document.getElementById('cardMapping');
-
-  if (!panel || !labelEl || !detailEl) {
-    return;
-  }
-
-  panel.dataset.status = state;
-  labelEl.textContent = label;
-  detailEl.textContent = detail;
-
-  setMappingText('imageMapping', diagnostics.imageField, diagnostics.imageState, diagnostics.imageFieldTitle);
-  setMappingText('valueMapping', diagnostics.valueField, diagnostics.valueState, diagnostics.valueFieldTitle);
-
-  if (pairEl) {
-    pairEl.textContent = `${diagnostics.pairCount ?? 0} matched`;
-    pairEl.title = pairEl.textContent;
-    pairEl.classList.toggle('is-missing', (diagnostics.pairCount ?? 0) === 0);
-    pairEl.classList.toggle('is-warning', diagnostics.warnings?.length > 0);
-  }
-
-  if (cardEl) {
-    cardEl.textContent = totalCards > renderedCards
-      ? `${renderedCards} of ${totalCards} rendered`
-      : `${renderedCards} rendered`;
-    cardEl.title = cardEl.textContent;
-    cardEl.classList.toggle('is-missing', renderedCards === 0);
-    cardEl.classList.toggle('is-warning', totalCards > renderedCards);
-  }
-}
-
-function setMappingText(elementId, fieldName, state, title) {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    return;
-  }
-
-  let text = fieldName || 'Not mapped';
-  if (state === 'missing-column') {
-    text = `Missing in data: ${fieldName}`;
-  }
-
-  element.textContent = text;
-  element.title = title || text;
-  element.classList.toggle('is-missing', state === 'missing' || state === 'missing-column');
-  element.classList.toggle('is-warning', state === 'partial');
 }
 
 function messageFromError(err) {

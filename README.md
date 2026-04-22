@@ -12,14 +12,13 @@ Last verified: 2026-04-22
 - No npm, build step, backend, or external runtime dependency
 - Tableau Extensions API SDK is vendored at `vendor/tableau.extensions.1.latest.js`
 - Renders one card for each valid Image URL / Value field pair on each summary data row
-- Includes a `Cards` selector for capping the visible cards to All, 3, 5, 10, or 25
 - Supports up to 15 fields in each Tableau Marks card encoding:
   - `Image URL`
   - `Value`
 - Uses `getVisualSpecificationAsync()` to resolve mapped fields
-- Uses `getSummaryDataReaderAsync()` and always releases the reader
-- Re-renders on `SummaryDataChanged`
-- Shows a visible status panel for current state, field mappings, matched pairs, warnings, and rendered card count
+- Uses `getSummaryDataReaderAsync()` with worksheet formatting applied and always releases the reader
+- Re-renders on `SummaryDataChanged` and `WorksheetFormattingChanged`
+- Shows up to three cards per row on wide panes, then two or one card per row as space narrows
 - Uses a neutral placeholder for blank or broken image URLs
 
 ## Project Files
@@ -27,7 +26,7 @@ Last verified: 2026-04-22
 | File | Purpose |
 |---|---|
 | `index.html` | Main Tableau runtime page loaded by the `.trex` manifest |
-| `styles.css` | Responsive grid, card layout, image fallback, status panel, and empty/error states |
+| `styles.css` | Responsive grid, card layout, image fallback, and empty/error states |
 | `chart.js` | Tableau initialization, mapping diagnostics, data parsing, and grid rendering |
 | `img-num-ext-local.trex` | Local HTTP Tableau Desktop manifest |
 | `img-num-ext-https-local.trex` | Local HTTPS Tableau Online manifest |
@@ -49,12 +48,12 @@ Last verified: 2026-04-22
 5. Required mappings are validated against the returned summary-data columns.
 6. `Image URL` fields and `Value` fields are paired by their mapped order.
 7. Every valid field pair on every returned data row becomes one card in the CSS grid.
-8. If the mapped counts do not match, the extension renders valid pairs and shows a warning for ignored extra fields.
-9. The `Cards` selector caps the visible cards after Tableau returns data; `All` renders every valid card.
+8. If the mapped counts do not match, the extension renders valid pairs and ignores unpaired extra fields.
+9. Tableau-formatted value text is rendered directly, so prefixes, suffixes, and number formatting are preserved.
 10. Blank or broken image URLs show a neutral fallback icon.
-11. `SummaryDataChanged` triggers a full re-render.
+11. `SummaryDataChanged` and `WorksheetFormattingChanged` trigger a full re-render.
 
-## Controlling Card Count
+## Card Count
 
 Cards are dynamic: Tableau controls the source rows, and the extension renders cards from matched field pairs.
 
@@ -62,18 +61,9 @@ Cards are dynamic: Tableau controls the source rows, and the extension renders c
 visible card count = returned summary rows x matched Image URL / Value field pairs
 ```
 
-You can control the count in two places:
+Control the count in Tableau by mapping more or fewer `Image URL` / `Value` fields, filtering the worksheet, or changing the dimensions/aggregation so Tableau returns fewer or more rows.
 
-- In Tableau: map more or fewer `Image URL` / `Value` fields, filter the worksheet, or change the dimensions/aggregation so Tableau returns fewer or more rows.
-- In the extension: use the `Cards` selector to cap visible cards to All, 3, 5, 10, or 25.
-
-You can also set the initial limit through the URL:
-
-```text
-http://localhost:8082/index.html?cards=10
-```
-
-Supported URL values are `all`, `3`, `5`, `10`, and `25`.
+The visual layout shows at most three cards per row on wide panes. The fourth card wraps to the next row.
 
 ## Local Tableau Desktop Test
 
@@ -107,7 +97,7 @@ test-data/image-number-grid.xls
 test-data/image-number-grid.csv
 ```
 
-Use the CSV when you want all 15 field pairs immediately. Map `img_url_1` through `img_url_15` to `Image URL` and `img_val_1` through `img_val_15` to `Value`. To validate mismatch handling, map more image URL fields than value fields; the extension should render the matched pairs and show a warning.
+Use the CSV when you want all 15 field pairs immediately. Map `img_url_1` through `img_url_15` to `Image URL` and `img_val_1` through `img_val_15` to `Value`. To validate mismatch handling, map more image URL fields than value fields; the extension should render the matched pairs.
 
 ## Tableau Online HTTPS Test
 
