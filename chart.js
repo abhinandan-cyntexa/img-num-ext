@@ -306,17 +306,19 @@ function getActiveMarksSpecification(vizSpec) {
 }
 
 function getEncodingFields(marksSpec, encodingId) {
-  const modernEncoding = marksSpec.encodings?.find(
+  const modernEncodings = marksSpec.encodings?.filter(
     encoding => normalizeToken(encoding?.id) === normalizeToken(encodingId)
   );
-  if (modernEncoding) {
-    return collectEncodingFields(modernEncoding);
+  if (Array.isArray(modernEncodings) && modernEncodings.length) {
+    return dedupeFields(modernEncodings.flatMap(collectEncodingFields));
   }
 
-  const legacyEncoding = marksSpec.encodingCollection?.find(
+  const legacyEncodings = marksSpec.encodingCollection?.filter(
     encoding => normalizeToken(encoding?.id) === normalizeToken(encodingId)
   );
-  return legacyEncoding ? collectEncodingFields(legacyEncoding) : [];
+  return Array.isArray(legacyEncodings) && legacyEncodings.length
+    ? dedupeFields(legacyEncodings.flatMap(collectEncodingFields))
+    : [];
 }
 
 function collectEncodingFields(encoding) {
