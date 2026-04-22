@@ -13,12 +13,12 @@
     <encoding id="image">
       <display-name resource-id="image_label">Image URL</display-name>
       <role-spec><role-type>discrete-dimension</role-type></role-spec>
-      <fields max-count="1"/>
+      <fields max-count="15"/>
     </encoding>
     <encoding id="value">
       <display-name resource-id="value_label">Value</display-name>
       <role-spec><role-type>continuous-measure</role-type></role-spec>
-      <fields max-count="1"/>
+      <fields max-count="15"/>
     </encoding>
   </worksheet-extension>
   <resources>

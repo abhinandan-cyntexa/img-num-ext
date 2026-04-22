@@ -2,6 +2,19 @@
   box-sizing: border-box;
 }
 
+:root {
+  --page-bg: #f6f7f9;
+  --surface: #fff;
+  --surface-muted: #f3f5f7;
+  --border: #d9dee7;
+  --border-strong: #c7cfdb;
+  --text: #20252c;
+  --text-muted: #656d78;
+  --warning: #946200;
+  --danger: #a54817;
+  --shadow: 0 8px 22px rgba(24, 39, 61, 0.08);
+}
+
 [hidden] {
   display: none !important;
 }
@@ -16,8 +29,8 @@ body {
 body {
   overflow-x: hidden;
   overflow-y: auto;
-  background: #fff;
-  color: #2f2f2f;
+  background: var(--page-bg);
+  color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
@@ -28,18 +41,18 @@ body {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
 }
 
 .status-panel {
   width: 100%;
-  padding: 12px 14px;
-  border: 1px solid #dedede;
-  border-radius: 6px;
-  background: #fff;
-  box-shadow: 0 7px 20px rgba(31, 45, 61, 0.08);
-  color: #333;
+  padding: 12px 14px 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -77,18 +90,19 @@ body {
 
 .status-detail {
   margin-top: 4px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .status-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
 
 .status-controls label {
-  color: #777;
+  color: var(--text-muted);
   font-weight: 500;
 }
 
@@ -96,41 +110,48 @@ body {
   min-width: 82px;
   height: 28px;
   padding: 3px 28px 3px 8px;
-  border: 1px solid #cfcfcf;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
-  background: #fff;
-  color: #333;
+  background: var(--surface);
+  color: var(--text);
   font: inherit;
 }
 
 .mapping-list {
   display: grid;
-  gap: 5px;
-  margin: 9px 0 0;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 9px 12px;
+  margin: 11px 0 0;
 }
 
 .mapping-list div {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 8px;
+  min-width: 0;
+  gap: 2px;
 }
 
 .mapping-list dt {
-  color: #777;
+  color: var(--text-muted);
+  font-size: 11px;
   font-weight: 500;
 }
 
 .mapping-list dd {
   min-width: 0;
   margin: 0;
-  color: #333;
+  color: var(--text);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .mapping-list dd.is-missing {
-  color: #a54817;
+  color: var(--danger);
+}
+
+.mapping-list dd.is-warning {
+  color: var(--warning);
 }
 
 .grid-shell {
@@ -142,7 +163,7 @@ body {
 .card-grid {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 12px;
   align-content: start;
   overflow-x: hidden;
@@ -150,42 +171,46 @@ body {
 
 .metric-card {
   display: flex;
-  height: 160px;
+  min-height: 164px;
   min-width: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 18px 16px 16px;
+  gap: 14px;
+  padding: 16px 14px;
   overflow: hidden;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 7px 18px rgba(31, 45, 61, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 7px 18px rgba(24, 39, 61, 0.06);
   text-align: center;
 }
 
 .image-frame {
   display: grid;
-  width: 96px;
-  height: 68px;
-  flex: 0 0 68px;
+  width: min(112px, 100%);
+  height: 76px;
+  flex: 0 0 76px;
   place-items: center;
+  overflow: hidden;
+  border: 1px solid #e5e9ef;
+  border-radius: 8px;
+  background: var(--surface-muted);
 }
 
 .card-image {
   display: block;
-  max-width: 96px;
-  max-height: 68px;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
 .image-placeholder {
   display: grid;
-  width: 96px;
-  height: 68px;
+  width: 100%;
+  height: 100%;
   place-items: center;
-  color: #111;
+  color: #8a94a3;
 }
 
 .image-placeholder[hidden] {
@@ -193,24 +218,25 @@ body {
 }
 
 .image-placeholder svg {
-  width: 84px;
-  height: 62px;
+  width: 54px;
+  height: 54px;
   fill: currentColor;
 }
 
 .card-value {
   width: 100%;
-  min-height: 26px;
-  color: #5e6368;
-  font-size: 22px;
-  font-weight: 400;
-  line-height: 1.18;
+  min-height: 28px;
+  color: var(--text);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1.14;
   overflow-wrap: anywhere;
   letter-spacing: 0;
 }
 
 .card-value.is-missing {
-  color: #a54817;
+  color: var(--danger);
 }
 
 .empty-state {
@@ -218,10 +244,10 @@ body {
   min-height: 180px;
   place-items: center;
   padding: 20px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background: #fff;
-  color: #666;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.4;
   text-align: center;
@@ -249,34 +275,46 @@ body {
   display: block;
 }
 
+@media (min-width: 860px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 14px;
+  }
+}
+
 @media (max-width: 520px) {
   .extension-root {
-    padding: 12px;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .status-panel {
+    padding: 10px 11px;
   }
 
   .card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
     gap: 10px;
   }
 
   .metric-card {
-    height: 150px;
+    min-height: 146px;
     gap: 13px;
-    padding: 16px 12px 14px;
+    padding: 14px 10px;
   }
 
-  .image-frame,
-  .image-placeholder {
-    width: 84px;
-    height: 62px;
+  .image-frame {
+    width: min(96px, 100%);
+    height: 66px;
+    flex-basis: 66px;
   }
 
   .image-placeholder svg {
-    width: 76px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
   }
 
   .card-value {
-    font-size: 19px;
+    font-size: 20px;
   }
 }

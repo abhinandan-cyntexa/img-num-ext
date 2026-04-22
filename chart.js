@@ -73,13 +73,13 @@ async function render(worksheet) {
     const diagnostics = getMappingDiagnostics(vizSpec, dataTable);
 
     if (diagnostics.issues.length) {
-      renderEmptyGrid('Map both Image URL and Value fields to render the grid.');
+      renderEmptyGrid('Map at least one valid Image URL and Value field pair to render the grid.');
       setStatus({
         state: 'warning',
         label: 'Needs mapping',
         detail: diagnostics.issues.join(' '),
         diagnostics,
-        renderedRows: 0,
+        renderedCards: 0,
       });
       return;
     }
@@ -91,14 +91,14 @@ async function render(worksheet) {
         label: 'No data',
         detail: 'The mapped fields are valid, but Tableau returned no summary rows.',
         diagnostics,
-        renderedRows: 0,
+        renderedCards: 0,
       });
       return;
     }
 
     const allCards = parseCards(dataTable, diagnostics);
     const visibleCards = applyCardLimit(allCards);
-    renderGrid(visibleCards, diagnostics, dataTable.data.length, requestId);
+    renderGrid(visibleCards, diagnostics, dataTable.data.length, allCards.length, requestId);
   } catch (err) {
     if (requestId === renderRequestId) {
       renderEmptyState(messageFromError(err), 'error', 'Error');
@@ -187,51 +187,96 @@ function getMappingDiagnostics(vizSpec, dataTable) {
     throw new Error('No marks specification found.');
   }
 
-  const imageField = getEncodingField(marksSpec, ENCODING_IMAGE);
-  const valueField = getEncodingField(marksSpec, ENCODING_VALUE);
+  const imageFields = getEncodingFields(marksSpec, ENCODING_IMAGE);
+  const valueFields = getEncodingFields(marksSpec, ENCODING_VALUE);
   const columns = dataTable.columns ?? [];
-  const imageIndex = findColumnIndex(columns, imageField);
-  const valueIndex = findColumnIndex(columns, valueField);
+  const imageColumns = resolveEncodingColumns(columns, imageFields);
+  const valueColumns = resolveEncodingColumns(columns, valueFields);
+  const validImageColumns = imageColumns.filter(column => column.index >= 0);
+  const validValueColumns = valueColumns.filter(column => column.index >= 0);
+  const pairCount = Math.min(validImageColumns.length, validValueColumns.length);
+  const pairs = Array.from({ length: pairCount }, (_unused, pairIndex) => ({
+    pairNumber: pairIndex + 1,
+    image: validImageColumns[pairIndex],
+    value: validValueColumns[pairIndex],
+  }));
 
   const diagnostics = {
-    imageField: getFieldLabel(imageField),
-    valueField: getFieldLabel(valueField),
-    imageState: imageField ? 'mapped' : 'missing',
-    valueState: valueField ? 'mapped' : 'missing',
-    imageIndex,
-    valueIndex,
+    imageField: formatFieldSummary(imageFields),
+    valueField: formatFieldSummary(valueFields),
+    imageFieldTitle: formatFieldTitle(imageFields),
+    valueFieldTitle: formatFieldTitle(valueFields),
+    imageState: imageFields.length ? 'mapped' : 'missing',
+    valueState: valueFields.length ? 'mapped' : 'missing',
+    imageColumns,
+    valueColumns,
+    validImageCount: validImageColumns.length,
+    validValueCount: validValueColumns.length,
+    pairCount,
+    pairs,
     issues: [],
+    warnings: [],
   };
 
-  if (!imageField) {
+  if (!imageFields.length) {
     diagnostics.issues.push('Image URL is not mapped.');
-  } else if (imageIndex < 0) {
+  } else if (!validImageColumns.length) {
     diagnostics.imageState = 'missing-column';
-    diagnostics.issues.push(`Image URL is mapped to "${diagnostics.imageField}", but that field is not in summary data.`);
+    diagnostics.issues.push('Image URL fields are mapped, but none are in summary data.');
+  } else if (validImageColumns.length < imageFields.length) {
+    diagnostics.imageState = 'partial';
+    diagnostics.warnings.push(`${formatCount(imageFields.length - validImageColumns.length, 'Image URL field')} missing from summary data.`);
   }
 
-  if (!valueField) {
+  if (!valueFields.length) {
     diagnostics.issues.push('Value is not mapped.');
-  } else if (valueIndex < 0) {
+  } else if (!validValueColumns.length) {
     diagnostics.valueState = 'missing-column';
-    diagnostics.issues.push(`Value is mapped to "${diagnostics.valueField}", but that field is not in summary data.`);
+    diagnostics.issues.push('Value fields are mapped, but none are in summary data.');
+  } else if (validValueColumns.length < valueFields.length) {
+    diagnostics.valueState = 'partial';
+    diagnostics.warnings.push(`${formatCount(valueFields.length - validValueColumns.length, 'Value field')} missing from summary data.`);
+  }
+
+  if (!diagnostics.issues.length && pairCount === 0) {
+    diagnostics.issues.push('No valid Image URL and Value field pairs were found.');
+  }
+
+  if (!diagnostics.issues.length && validImageColumns.length !== validValueColumns.length) {
+    const extraImageCount = Math.max(0, validImageColumns.length - pairCount);
+    const extraValueCount = Math.max(0, validValueColumns.length - pairCount);
+
+    if (extraImageCount > 0) {
+      diagnostics.imageState = 'partial';
+      diagnostics.warnings.push(`${formatCount(extraImageCount, 'extra Image URL field')} ignored because it has no matching Value field.`);
+    }
+
+    if (extraValueCount > 0) {
+      diagnostics.valueState = 'partial';
+      diagnostics.warnings.push(`${formatCount(extraValueCount, 'extra Value field')} ignored because it has no matching Image URL field.`);
+    }
   }
 
   return diagnostics;
 }
 
 function parseCards(dataTable, diagnostics) {
-  return dataTable.data.map((row, rowIndex) => {
-    const imageCell = row[diagnostics.imageIndex];
-    const valueCell = row[diagnostics.valueIndex];
-    const numericValue = toNumber(cellRawValue(valueCell) ?? cellDisplayValue(valueCell));
+  return dataTable.data.flatMap((row, rowIndex) => (
+    diagnostics.pairs.map(pair => {
+      const imageCell = row[pair.image.index];
+      const valueCell = row[pair.value.index];
+      const numericValue = toNumber(cellRawValue(valueCell) ?? cellDisplayValue(valueCell));
 
-    return {
-      rowNumber: rowIndex + 1,
-      imageUrl: normalizeImageUrl(cellStringValue(imageCell)),
-      value: numericValue,
-    };
-  });
+      return {
+        rowNumber: rowIndex + 1,
+        pairNumber: pair.pairNumber,
+        imageField: pair.image.label,
+        valueField: pair.value.label,
+        imageUrl: normalizeImageUrl(cellStringValue(imageCell)),
+        value: numericValue,
+      };
+    })
+  ));
 }
 
 function mergeDataPages(pages) {
@@ -260,30 +305,98 @@ function getActiveMarksSpecification(vizSpec) {
   return null;
 }
 
-function getEncodingField(marksSpec, encodingId) {
+function getEncodingFields(marksSpec, encodingId) {
   const modernEncoding = marksSpec.encodings?.find(
     encoding => normalizeToken(encoding?.id) === normalizeToken(encodingId)
   );
-  if (modernEncoding?.field) {
-    return modernEncoding.field;
+  if (modernEncoding) {
+    return collectEncodingFields(modernEncoding);
   }
 
   const legacyEncoding = marksSpec.encodingCollection?.find(
     encoding => normalizeToken(encoding?.id) === normalizeToken(encodingId)
   );
-  const legacyField = legacyEncoding?.fieldCollection?.[0];
-  if (legacyField) {
+  return legacyEncoding ? collectEncodingFields(legacyEncoding) : [];
+}
+
+function collectEncodingFields(encoding) {
+  const fields = [];
+
+  if (Array.isArray(encoding.fields)) {
+    fields.push(...encoding.fields);
+  }
+
+  if (Array.isArray(encoding.field)) {
+    fields.push(...encoding.field);
+  } else if (encoding.field) {
+    fields.push(encoding.field);
+  }
+
+  if (Array.isArray(encoding.fieldCollection)) {
+    fields.push(...encoding.fieldCollection);
+  }
+
+  return dedupeFields(fields.map(normalizeEncodingField).filter(Boolean));
+}
+
+function normalizeEncodingField(field) {
+  if (!field) {
+    return null;
+  }
+
+  if (typeof field === 'string') {
     return {
-      id: legacyField.fieldId,
-      name: legacyField.fieldName,
-      fieldName: legacyField.fieldName,
+      id: field,
+      name: field,
+      fieldName: field,
     };
   }
 
-  return null;
+  return {
+    ...field,
+    id: field.id ?? field.fieldId,
+    name: field.name ?? field.fieldName ?? field.fieldCaption,
+    fieldName: field.fieldName ?? field.name ?? field.fieldCaption,
+  };
 }
 
-function findColumnIndex(columns, field) {
+function dedupeFields(fields) {
+  const seen = new Set();
+  return fields.filter(field => {
+    const key = [
+      field.id,
+      field.fieldId,
+      field.name,
+      field.fieldName,
+      field.fieldCaption,
+    ].map(normalizeToken).find(Boolean);
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function resolveEncodingColumns(columns, fields) {
+  const usedIndexes = new Set();
+  return fields.map(field => {
+    const index = findColumnIndex(columns, field, usedIndexes);
+    if (index >= 0) {
+      usedIndexes.add(index);
+    }
+
+    return {
+      field,
+      label: getFieldLabel(field) || 'Unnamed field',
+      index,
+    };
+  });
+}
+
+function findColumnIndex(columns, field, excludedIndexes = new Set()) {
   if (!field) {
     return -1;
   }
@@ -297,6 +410,10 @@ function findColumnIndex(columns, field) {
   ].map(normalizeToken).filter(Boolean);
 
   for (let columnPosition = 0; columnPosition < columns.length; columnPosition += 1) {
+    if (excludedIndexes.has(columnPosition)) {
+      continue;
+    }
+
     const column = columns[columnPosition];
     const columnTokens = [
       column?.fieldId,
@@ -314,6 +431,22 @@ function findColumnIndex(columns, field) {
   return -1;
 }
 
+function formatFieldSummary(fields) {
+  if (!fields.length) {
+    return null;
+  }
+
+  const labels = fields.map(field => getFieldLabel(field) || 'Unnamed field');
+  const visibleLabels = labels.slice(0, 3).join(', ');
+  const remainingCount = labels.length - 3;
+  const suffix = remainingCount > 0 ? `, +${remainingCount} more` : '';
+  return `${fields.length} mapped: ${visibleLabels}${suffix}`;
+}
+
+function formatFieldTitle(fields) {
+  return fields.map(field => getFieldLabel(field) || 'Unnamed field').join(', ');
+}
+
 function getFieldLabel(field) {
   return field?.name ?? field?.fieldName ?? field?.fieldCaption ?? field?.id ?? field?.fieldId ?? null;
 }
@@ -322,7 +455,7 @@ function normalizeToken(value) {
   return String(value ?? '').trim().toLowerCase();
 }
 
-function renderGrid(cards, diagnostics, rowCount, requestId) {
+function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
   const grid = document.getElementById('cardGrid');
   const emptyState = document.getElementById('emptyState');
   const fragment = document.createDocumentFragment();
@@ -340,7 +473,10 @@ function renderGrid(cards, diagnostics, rowCount, requestId) {
   cards.forEach(cardData => {
     const card = document.createElement('article');
     card.className = 'metric-card';
-    card.setAttribute('aria-label', `Metric card ${cardData.rowNumber}`);
+    card.setAttribute(
+      'aria-label',
+      `Metric card ${cardData.pairNumber}: ${cardData.imageField} with ${cardData.valueField}`
+    );
 
     const imageFrame = document.createElement('div');
     imageFrame.className = 'image-frame';
@@ -376,7 +512,7 @@ function renderGrid(cards, diagnostics, rowCount, requestId) {
         placeholder.hidden = true;
         imageStats.pending -= 1;
         imageStats.loaded += 1;
-        updateGridStatus(cards.length, rowCount, diagnostics, imageStats);
+        updateGridStatus(cards.length, totalCardCount, rowCount, diagnostics, imageStats);
       };
       image.onerror = () => {
         if (requestId !== renderRequestId) {
@@ -388,7 +524,7 @@ function renderGrid(cards, diagnostics, rowCount, requestId) {
         image.removeAttribute('src');
         imageStats.pending -= 1;
         imageStats.broken += 1;
-        updateGridStatus(cards.length, rowCount, diagnostics, imageStats);
+        updateGridStatus(cards.length, totalCardCount, rowCount, diagnostics, imageStats);
       };
       image.src = cardData.imageUrl;
     } else {
@@ -400,21 +536,26 @@ function renderGrid(cards, diagnostics, rowCount, requestId) {
   });
 
   grid.append(fragment);
-  updateGridStatus(cards.length, rowCount, diagnostics, imageStats);
+  updateGridStatus(cards.length, totalCardCount, rowCount, diagnostics, imageStats);
 }
 
-function updateGridStatus(cardCount, rowCount, diagnostics, imageStats) {
+function updateGridStatus(cardCount, totalCardCount, rowCount, diagnostics, imageStats) {
   const hasFallbacks = imageStats.blank > 0 || imageStats.broken > 0;
   const hasInvalidValues = imageStats.invalidValues > 0;
+  const hasMappingWarnings = diagnostics.warnings?.length > 0;
   const isLoadingImages = imageStats.pending > 0;
-  const state = isLoadingImages ? 'loading' : (hasFallbacks || hasInvalidValues ? 'warning' : 'ready');
-  const label = isLoadingImages ? 'Loading images' : (hasFallbacks ? 'Image fallback' : (hasInvalidValues ? 'Value fallback' : 'Ready'));
+  const state = isLoadingImages ? 'loading' : (hasMappingWarnings || hasFallbacks || hasInvalidValues ? 'warning' : 'ready');
+  const label = isLoadingImages ? 'Loading images' : (hasMappingWarnings ? 'Mapping warning' : (hasFallbacks ? 'Image fallback' : (hasInvalidValues ? 'Value fallback' : 'Ready')));
   const details = [
-    `Rendering ${formatCount(cardCount, 'card')} from ${formatCount(rowCount, 'row')}.`,
+    `Rendering ${formatCount(cardCount, 'card')} from ${formatCount(rowCount, 'row')} and ${formatCount(diagnostics.pairCount, 'field pair')}.`,
   ];
 
-  if (cardLimit !== 'all' && rowCount > cardCount) {
+  if (cardLimit !== 'all' && totalCardCount > cardCount) {
     details.push(`Display capped at ${cardLimit}.`);
+  }
+
+  if (hasMappingWarnings) {
+    details.push(diagnostics.warnings.join(' '));
   }
 
   if (imageStats.pending > 0) {
@@ -435,7 +576,8 @@ function updateGridStatus(cardCount, rowCount, diagnostics, imageStats) {
     label,
     detail: details.join(' '),
     diagnostics,
-    renderedRows: cardCount,
+    renderedCards: cardCount,
+    totalCards: totalCardCount,
   });
 }
 
@@ -451,7 +593,7 @@ function renderEmptyState(message, state = 'error', label = 'Error') {
     state,
     label,
     detail: message,
-    renderedRows: 0,
+    renderedCards: 0,
   });
 }
 
@@ -525,11 +667,12 @@ function formatCount(count, singular) {
   return `${count} ${singular}${count === 1 ? '' : 's'}`;
 }
 
-function setStatus({ state = 'loading', label, detail, diagnostics = {}, renderedRows = 0 }) {
+function setStatus({ state = 'loading', label, detail, diagnostics = {}, renderedCards = 0, totalCards = renderedCards }) {
   const panel = document.getElementById('statusPanel');
   const labelEl = document.getElementById('statusLabel');
   const detailEl = document.getElementById('statusDetail');
-  const rowEl = document.getElementById('rowMapping');
+  const pairEl = document.getElementById('pairMapping');
+  const cardEl = document.getElementById('cardMapping');
 
   if (!panel || !labelEl || !detailEl) {
     return;
@@ -539,17 +682,27 @@ function setStatus({ state = 'loading', label, detail, diagnostics = {}, rendere
   labelEl.textContent = label;
   detailEl.textContent = detail;
 
-  setMappingText('imageMapping', diagnostics.imageField, diagnostics.imageState);
-  setMappingText('valueMapping', diagnostics.valueField, diagnostics.valueState);
+  setMappingText('imageMapping', diagnostics.imageField, diagnostics.imageState, diagnostics.imageFieldTitle);
+  setMappingText('valueMapping', diagnostics.valueField, diagnostics.valueState, diagnostics.valueFieldTitle);
 
-  if (rowEl) {
-    rowEl.textContent = `${renderedRows} rendered`;
-    rowEl.title = rowEl.textContent;
-    rowEl.classList.toggle('is-missing', renderedRows === 0);
+  if (pairEl) {
+    pairEl.textContent = `${diagnostics.pairCount ?? 0} matched`;
+    pairEl.title = pairEl.textContent;
+    pairEl.classList.toggle('is-missing', (diagnostics.pairCount ?? 0) === 0);
+    pairEl.classList.toggle('is-warning', diagnostics.warnings?.length > 0);
+  }
+
+  if (cardEl) {
+    cardEl.textContent = totalCards > renderedCards
+      ? `${renderedCards} of ${totalCards} rendered`
+      : `${renderedCards} rendered`;
+    cardEl.title = cardEl.textContent;
+    cardEl.classList.toggle('is-missing', renderedCards === 0);
+    cardEl.classList.toggle('is-warning', totalCards > renderedCards);
   }
 }
 
-function setMappingText(elementId, fieldName, state) {
+function setMappingText(elementId, fieldName, state, title) {
   const element = document.getElementById(elementId);
   if (!element) {
     return;
@@ -561,8 +714,9 @@ function setMappingText(elementId, fieldName, state) {
   }
 
   element.textContent = text;
-  element.title = text;
-  element.classList.toggle('is-missing', state !== 'mapped');
+  element.title = title || text;
+  element.classList.toggle('is-missing', state === 'missing' || state === 'missing-column');
+  element.classList.toggle('is-warning', state === 'partial');
 }
 
 function messageFromError(err) {
