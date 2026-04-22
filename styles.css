@@ -163,7 +163,7 @@ body {
 .card-grid {
   display: grid;
   width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   align-content: start;
   overflow-x: hidden;
@@ -277,8 +277,13 @@ body {
 
 @media (min-width: 860px) {
   .card-grid {
-    grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
     gap: 14px;
+  }
+}
+
+@media (max-width: 720px) {
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -293,7 +298,7 @@ body {
   }
 
   .card-grid {
-    grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
