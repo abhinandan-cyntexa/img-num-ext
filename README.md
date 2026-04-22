@@ -12,6 +12,7 @@ Last verified: 2026-04-22
 - No npm, build step, backend, or external runtime dependency
 - Tableau Extensions API SDK is vendored at `vendor/tableau.extensions.1.latest.js`
 - Renders one card for each summary data row returned by Tableau
+- Includes a `Cards` selector for capping the visible cards to All, 3, 5, 10, or 25
 - Supports the same two Tableau Marks card encodings as the single-card version:
   - `Image URL`
   - `Value`
@@ -36,6 +37,7 @@ Last verified: 2026-04-22
 | `debug.html` | Minimal Tableau SDK handshake page |
 | `serve_https.py` | Python HTTPS static server with no-cache headers |
 | `test-data/image-number-grid.xls` | Minimal Tableau test workbook copied from the single-card validation project |
+| `test-data/image-number-grid.csv` | 10-row grid dataset with inline SVG images for validating dynamic card count |
 | `vendor/tableau.extensions.1.latest.js` | Local Tableau Extensions API SDK |
 
 ## Runtime Behavior
@@ -47,8 +49,26 @@ Last verified: 2026-04-22
 5. Required mappings are validated against the returned summary-data columns.
 6. Every returned data row becomes one card in the CSS grid.
 7. Each card renders the mapped image URL above the comma-formatted mapped value.
-8. Blank or broken image URLs show the same neutral fallback icon used by the single-card project.
-9. `SummaryDataChanged` triggers a full re-render.
+8. The `Cards` selector caps the visible rows after Tableau returns data; `All` renders every returned row.
+9. Blank or broken image URLs show the same neutral fallback icon used by the single-card project.
+10. `SummaryDataChanged` triggers a full re-render.
+
+## Controlling Card Count
+
+Cards are dynamic: Tableau controls the source rows, and the extension renders one card per returned summary row.
+
+You can control the count in two places:
+
+- In Tableau: filter the worksheet, use Top N, or change the dimensions/aggregation so Tableau returns fewer or more rows.
+- In the extension: use the `Cards` selector to cap visible cards to All, 3, 5, 10, or 25.
+
+You can also set the initial limit through the URL:
+
+```text
+http://localhost:8082/index.html?cards=10
+```
+
+Supported URL values are `all`, `3`, `5`, `10`, and `25`.
 
 ## Local Tableau Desktop Test
 
@@ -75,11 +95,14 @@ Map fields:
 - Drag `Image URL` to the extension's `Image URL` encoding.
 - Drag `Value` or `SUM(Value)` to the extension's `Value` encoding.
 
-The included workbook can be used for a quick test:
+The included data files can be used for a quick test:
 
 ```text
 test-data/image-number-grid.xls
+test-data/image-number-grid.csv
 ```
+
+Use the CSV when you want ten rows immediately. Map `Image URL` to the extension's `Image URL` encoding and `Value` to the `Value` encoding. `Sort Order` can be used in Tableau to sort or filter the visible rows.
 
 ## Tableau Online HTTPS Test
 
@@ -151,6 +174,7 @@ xmllint --noout img-num-ext-debug-https-local.trex
 xmllint --noout img-num-ext-github-pages.trex
 xmllint --noout img-num-ext.trex
 file test-data/image-number-grid.xls
+wc -l test-data/image-number-grid.csv
 ```
 
 Expected result:
@@ -158,6 +182,7 @@ Expected result:
 - `node --check` prints no syntax errors
 - `xmllint` prints no XML errors
 - `file` reports a legacy Microsoft Excel workbook
+- `wc -l` reports 11 lines for the CSV: one header row plus ten data rows
 
 ## Scope Limits
 

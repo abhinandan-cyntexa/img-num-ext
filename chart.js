@@ -3,9 +3,12 @@
 const ENCODING_IMAGE = 'image';
 const ENCODING_VALUE = 'value';
 const PAGE_ROW_COUNT = 5000;
+const CARD_LIMIT_STORAGE_KEY = 'imgNumGrid.cardLimit';
+const CARD_LIMIT_OPTIONS = new Set(['all', '3', '5', '10', '25']);
 
 let activeWorksheet = null;
 let renderRequestId = 0;
+let cardLimit = getInitialCardLimit();
 
 window.addEventListener('error', event => {
   renderEmptyState(event.message || 'Unexpected script error.', 'error', 'Script error');
@@ -20,6 +23,7 @@ setStatus({
   label: 'Initializing',
   detail: 'Connecting to Tableau...',
 });
+initializeCardLimitControl();
 bootstrap();
 
 function bootstrap() {
@@ -92,13 +96,64 @@ async function render(worksheet) {
       return;
     }
 
-    const cards = parseCards(dataTable, diagnostics);
-    renderGrid(cards, diagnostics, dataTable.data.length, requestId);
+    const allCards = parseCards(dataTable, diagnostics);
+    const visibleCards = applyCardLimit(allCards);
+    renderGrid(visibleCards, diagnostics, dataTable.data.length, requestId);
   } catch (err) {
     if (requestId === renderRequestId) {
       renderEmptyState(messageFromError(err), 'error', 'Error');
     }
   }
+}
+
+function initializeCardLimitControl() {
+  const control = document.getElementById('cardLimitSelect');
+  if (!control) {
+    return;
+  }
+
+  control.value = cardLimit;
+  control.addEventListener('change', () => {
+    cardLimit = normalizeCardLimit(control.value);
+    persistCardLimit(cardLimit);
+    if (activeWorksheet) {
+      render(activeWorksheet);
+    }
+  });
+}
+
+function getInitialCardLimit() {
+  const params = new URLSearchParams(window.location.search);
+  return normalizeCardLimit(params.get('cards') || readStoredCardLimit() || 'all');
+}
+
+function normalizeCardLimit(value) {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return CARD_LIMIT_OPTIONS.has(normalized) ? normalized : 'all';
+}
+
+function readStoredCardLimit() {
+  try {
+    return window.localStorage?.getItem(CARD_LIMIT_STORAGE_KEY);
+  } catch (_err) {
+    return null;
+  }
+}
+
+function persistCardLimit(value) {
+  try {
+    window.localStorage?.setItem(CARD_LIMIT_STORAGE_KEY, value);
+  } catch (_err) {
+    // Some embedded browser contexts disable localStorage; the current session still updates.
+  }
+}
+
+function applyCardLimit(cards) {
+  if (cardLimit === 'all') {
+    return cards;
+  }
+
+  return cards.slice(0, Number(cardLimit));
 }
 
 async function fetchSummaryData(worksheet) {
@@ -357,6 +412,10 @@ function updateGridStatus(cardCount, rowCount, diagnostics, imageStats) {
   const details = [
     `Rendering ${formatCount(cardCount, 'card')} from ${formatCount(rowCount, 'row')}.`,
   ];
+
+  if (cardLimit !== 'all' && rowCount > cardCount) {
+    details.push(`Display capped at ${cardLimit}.`);
+  }
 
   if (imageStats.pending > 0) {
     details.push(`${formatCount(imageStats.loaded, 'image')} loaded; ${formatCount(imageStats.pending, 'image')} still loading.`);
