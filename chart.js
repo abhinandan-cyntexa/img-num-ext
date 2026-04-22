@@ -402,13 +402,18 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
   grid.replaceChildren();
   emptyState.hidden = true;
 
-  cards.forEach(cardData => {
+  cards.forEach((cardData, cardIndex) => {
     const card = document.createElement('article');
-    card.className = 'metric-card';
+    const tone = ((cardIndex % 6) + 1);
+    card.className = `metric-card tone-${tone}`;
+    card.style.animationDelay = `${cardIndex * 80}ms`;
     card.setAttribute(
       'aria-label',
       `Metric card ${cardData.pairNumber}: ${cardData.imageField} with ${cardData.valueField}`
     );
+
+    const accent = document.createElement('div');
+    accent.className = 'card-accent';
 
     const imageFrame = document.createElement('div');
     imageFrame.className = 'image-frame';
@@ -453,7 +458,7 @@ function renderGrid(cards, diagnostics, rowCount, totalCardCount, requestId) {
       image.src = cardData.imageUrl;
     }
 
-    card.append(imageFrame, value);
+    card.append(accent, imageFrame, value);
     fragment.append(card);
   });
 

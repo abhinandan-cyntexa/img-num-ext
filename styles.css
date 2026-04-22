@@ -3,16 +3,14 @@
 }
 
 :root {
-  --page-bg: #f6f7f9;
+  --page-bg: #f1f5f9;
   --surface: #fff;
-  --surface-muted: #f3f5f7;
-  --border: #d9dee7;
-  --border-strong: #c7cfdb;
-  --text: #20252c;
-  --text-muted: #656d78;
-  --warning: #946200;
+  --surface-muted: #f8fafc;
+  --border: #e9eef4;
+  --border-strong: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #94a3b8;
   --danger: #a54817;
-  --shadow: 0 8px 22px rgba(24, 39, 61, 0.08);
 }
 
 [hidden] {
@@ -31,7 +29,7 @@ body {
   overflow-y: auto;
   background: var(--page-bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
 .extension-root {
@@ -41,8 +39,7 @@ body {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 12px;
-  padding: 14px;
+  padding: 24px;
 }
 
 .grid-shell {
@@ -55,44 +52,121 @@ body {
   display: grid;
   width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
   align-content: start;
   overflow-x: hidden;
 }
 
 .metric-card {
+  --tone: #2563eb;
+  --tone-bg: #eff6ff;
+  --tone-border: #bfdbfe;
+  position: relative;
   display: flex;
-  min-height: 164px;
+  min-height: 210px;
   min-width: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  padding: 16px 14px;
+  gap: 16px;
+  padding: 32px 24px 28px;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 7px 18px rgba(24, 39, 61, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  cursor: default;
   text-align: center;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+  animation: fade-up 0.45s ease both;
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--tone-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.09), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.metric-card.tone-1 {
+  --tone: #2563eb;
+  --tone-bg: #eff6ff;
+  --tone-border: #bfdbfe;
+}
+
+.metric-card.tone-2 {
+  --tone: #059669;
+  --tone-bg: #ecfdf5;
+  --tone-border: #a7f3d0;
+}
+
+.metric-card.tone-3 {
+  --tone: #7c3aed;
+  --tone-bg: #f5f3ff;
+  --tone-border: #ddd6fe;
+}
+
+.metric-card.tone-4 {
+  --tone: #d97706;
+  --tone-bg: #fffbeb;
+  --tone-border: #fde68a;
+}
+
+.metric-card.tone-5 {
+  --tone: #db2777;
+  --tone-bg: #fdf2f8;
+  --tone-border: #fbcfe8;
+}
+
+.metric-card.tone-6 {
+  --tone: #0891b2;
+  --tone-bg: #ecfeff;
+  --tone-border: #a5f3fc;
+}
+
+.card-accent {
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--tone);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.metric-card:hover .card-accent {
+  opacity: 1;
 }
 
 .image-frame {
   display: grid;
-  width: min(112px, 100%);
-  height: 76px;
-  flex: 0 0 76px;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
   place-items: center;
   overflow: hidden;
-  border: 1px solid #e5e9ef;
-  border-radius: 8px;
-  background: var(--surface-muted);
+  border: 1px solid var(--tone-border);
+  border-radius: 15px;
+  background: var(--tone-bg);
+  box-shadow: none;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease;
+}
+
+.metric-card:hover .image-frame {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
 }
 
 .card-image {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 38px;
+  max-height: 38px;
   object-fit: contain;
 }
 
@@ -101,7 +175,7 @@ body {
   width: 100%;
   height: 100%;
   place-items: center;
-  color: #8a94a3;
+  color: var(--tone);
 }
 
 .image-placeholder[hidden] {
@@ -109,21 +183,27 @@ body {
 }
 
 .image-placeholder svg {
-  width: 54px;
-  height: 54px;
+  width: 26px;
+  height: 26px;
   fill: currentColor;
 }
 
 .card-value {
   width: 100%;
-  min-height: 28px;
+  min-height: 36px;
   color: var(--text);
-  font-size: 24px;
+  font-family: "Syne", "DM Sans", sans-serif;
+  font-size: clamp(24px, 3vw, 34px);
   font-variant-numeric: tabular-nums;
-  font-weight: 650;
-  line-height: 1.14;
+  font-weight: 800;
+  line-height: 1;
   overflow-wrap: anywhere;
   letter-spacing: 0;
+  transition: color 0.2s ease;
+}
+
+.metric-card:hover .card-value {
+  color: var(--tone);
 }
 
 .card-value.is-missing {
@@ -136,7 +216,7 @@ body {
   place-items: center;
   padding: 20px;
   border: 1px dashed var(--border-strong);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--surface);
   color: var(--text-muted);
   font-size: 13px;
@@ -166,9 +246,21 @@ body {
   display: block;
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (min-width: 860px) {
   .card-grid {
-    gap: 14px;
+    gap: 16px;
   }
 }
 
@@ -180,33 +272,32 @@ body {
 
 @media (max-width: 520px) {
   .extension-root {
-    gap: 10px;
-    padding: 10px;
+    padding: 12px;
   }
 
   .card-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 12px;
   }
 
   .metric-card {
-    min-height: 146px;
-    gap: 13px;
-    padding: 14px 10px;
+    min-height: 184px;
+    gap: 14px;
+    padding: 28px 18px 24px;
   }
 
   .image-frame {
-    width: min(96px, 100%);
-    height: 66px;
-    flex-basis: 66px;
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
   }
 
   .image-placeholder svg {
-    width: 46px;
-    height: 46px;
+    width: 24px;
+    height: 24px;
   }
 
   .card-value {
-    font-size: 20px;
+    font-size: 26px;
   }
 }
